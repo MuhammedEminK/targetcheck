@@ -1,0 +1,316 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Region Check</title>
+<style>
+  :root {
+    --bg: #f6f6f4; --card: #ffffff; --text: #18181b; --muted: #6b6b73; --line: #e4e4e0;
+    --ok: #15803d; --ok-bg: #e7f6ec; --warn: #a16207; --warn-bg: #fdf4dc; --fail: #b91c1c; --fail-bg: #fde8e8;
+    --accent: #18181b; --accent-text: #ffffff;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0f0f11; --card: #18181b; --text: #f4f4f5; --muted: #a1a1aa; --line: #2a2a2e;
+      --ok: #4ade80; --ok-bg: #12301d; --warn: #facc15; --warn-bg: #33290b; --fail: #f87171; --fail-bg: #3a1414;
+      --accent: #f4f4f5; --accent-text: #18181b;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font: 15px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  }
+  main { max-width: 560px; margin: 0 auto; padding: 20px 16px 48px; }
+  h1 { font-size: 22px; margin: 4px 0 2px; }
+  .sub { color: var(--muted); margin: 0 0 18px; font-size: 14px; }
+  .row { display: flex; gap: 8px; }
+  select, button {
+    font: inherit; border-radius: 10px; padding: 11px 12px; border: 1px solid var(--line);
+    background: var(--card); color: var(--text);
+  }
+  select { flex: 1; min-width: 0; }
+  button { background: var(--accent); color: var(--accent-text); border-color: var(--accent); font-weight: 600; }
+  button:disabled { opacity: .5; }
+  .verdict {
+    margin: 18px 0 12px; padding: 14px 16px; border-radius: 12px; font-weight: 600; font-size: 17px;
+    background: var(--card); border: 1px solid var(--line);
+  }
+  .verdict.ok { background: var(--ok-bg); color: var(--ok); border-color: transparent; }
+  .verdict.warn { background: var(--warn-bg); color: var(--warn); border-color: transparent; }
+  .verdict.fail { background: var(--fail-bg); color: var(--fail); border-color: transparent; }
+  .checks { list-style: none; margin: 0; padding: 0; background: var(--card); border: 1px solid var(--line); border-radius: 12px; }
+  .checks li { display: flex; gap: 12px; padding: 12px 14px; border-top: 1px solid var(--line); }
+  .checks li:first-child { border-top: 0; }
+  .ic { flex: 0 0 22px; font-size: 16px; line-height: 22px; text-align: center; }
+  .t { font-weight: 600; }
+  .d { color: var(--muted); font-size: 13.5px; word-break: break-word; }
+  .d b { color: var(--text); font-weight: 600; }
+  h2 { font-size: 15px; margin: 26px 0 8px; }
+  .manual { margin: 0; padding-left: 20px; color: var(--muted); font-size: 14px; }
+  .manual li { margin: 4px 0; }
+  .foot { color: var(--muted); font-size: 12.5px; margin-top: 22px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Region Check</h1>
+  <p class="sub">Cihazın hedef ülkeden görünüp görünmediğini kontrol eder. VPN açıkken Safari'den aç.</p>
+
+  <div class="row">
+    <select id="country" aria-label="Hedef ülke"></select>
+    <button id="run">Kontrol et</button>
+  </div>
+
+  <div id="verdict" class="verdict">Hazırlanıyor…</div>
+  <ul id="checks" class="checks"></ul>
+
+  <h2>Tarayıcıdan ölçülemeyenler (elle kontrol et)</h2>
+  <ul class="manual">
+    <li>SIM kart çıkarılmış / eSIM silinmiş</li>
+    <li>Location Services → OFF</li>
+    <li>Background App Refresh → OFF</li>
+    <li>Tracking → “Allow Apps to Request to Track” OFF</li>
+    <li>Bluetooth kapalı</li>
+    <li>Date &amp; Time → Set Automatically OFF</li>
+    <li>Kayıt telefon numarasıyla değil, e-postayla</li>
+  </ul>
+
+  <p class="foot">IP bilgisi ipwho.is / ipapi.co üzerinden alınır. DNS sızıntısı tarayıcıdan ölçülemez.</p>
+</main>
+
+<script>
+const COUNTRIES = {
+  GB: { name: 'United Kingdom', flag: '🇬🇧', langs: ['en-GB'], tz: ['Europe/London'] },
+  US: { name: 'United States', flag: '🇺🇸', langs: ['en-US'], tz: [
+    'America/New_York', 'America/Detroit', 'America/Chicago', 'America/Denver', 'America/Phoenix',
+    'America/Los_Angeles', 'America/Anchorage', 'Pacific/Honolulu', 'America/Boise',
+    'America/Indiana/Indianapolis', 'America/Kentucky/Louisville'] },
+  CA: { name: 'Canada', flag: '🇨🇦', langs: ['en-CA', 'fr-CA'], tz: [
+    'America/Toronto', 'America/Vancouver', 'America/Edmonton', 'America/Winnipeg',
+    'America/Halifax', 'America/St_Johns', 'America/Regina'] },
+  AU: { name: 'Australia', flag: '🇦🇺', langs: ['en-AU'], tz: [
+    'Australia/Sydney', 'Australia/Melbourne', 'Australia/Brisbane', 'Australia/Perth',
+    'Australia/Adelaide', 'Australia/Hobart', 'Australia/Darwin'] },
+  NZ: { name: 'New Zealand', flag: '🇳🇿', langs: ['en-NZ'], tz: ['Pacific/Auckland'] },
+  IE: { name: 'Ireland', flag: '🇮🇪', langs: ['en-IE'], tz: ['Europe/Dublin'] },
+  NL: { name: 'Netherlands', flag: '🇳🇱', langs: ['nl-NL', 'en-NL'], tz: ['Europe/Amsterdam'] },
+  DE: { name: 'Germany', flag: '🇩🇪', langs: ['de-DE'], tz: ['Europe/Berlin'] },
+  AE: { name: 'United Arab Emirates', flag: '🇦🇪', langs: ['en-AE', 'ar-AE'], tz: ['Asia/Dubai'] },
+};
+
+// Hosting / VPN providers. A match means the IP is a datacenter IP, which apps can flag.
+const DATACENTER = ['amazon', 'aws', 'google', 'microsoft', 'azure', 'digitalocean', 'linode', 'akamai',
+  'vultr', 'choopa', 'hetzner', 'ovh', 'm247', 'leaseweb', 'contabo', 'oracle', 'alibaba', 'tencent',
+  'datacamp', 'cdn77', 'gcore', 'g-core', 'hostinger', 'ionos', 'scaleway', 'equinix', 'psychz',
+  'quadranet', 'colocrossing', 'cloudflare', 'fastly', 'datapacket', 'zenlayer', 'hostwinds',
+  'clouvider', 'kamatera', 'upcloud', 'netcup', 'worldstream', 'nforce', 'i3d', 'frantech', 'buyvm',
+  'hosting', 'server', 'cloud', 'data center', 'datacenter', 'vpn'];
+
+const $ = (id) => document.getElementById(id);
+const select = $('country');
+
+function store(get, value) {
+  try {
+    if (get) return localStorage.getItem('rc-country');
+    localStorage.setItem('rc-country', value);
+  } catch (_) { return null; }
+}
+
+for (const [code, c] of Object.entries(COUNTRIES)) {
+  const o = document.createElement('option');
+  o.value = code;
+  o.textContent = `${c.flag}  ${c.name}`;
+  select.appendChild(o);
+}
+const fromUrl = new URLSearchParams(location.search).get('c');
+select.value = COUNTRIES[fromUrl?.toUpperCase()] ? fromUrl.toUpperCase() : (COUNTRIES[store(true)] ? store(true) : 'GB');
+
+async function getJSON(url, ms = 6000) {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), ms);
+  try {
+    const r = await fetch(url, { signal: ctrl.signal, cache: 'no-store' });
+    if (!r.ok) throw new Error(r.status);
+    return await r.json();
+  } finally { clearTimeout(timer); }
+}
+
+async function geo(ip = '') {
+  try {
+    const r = await getJSON(`https://ipwho.is/${ip}`);
+    if (r.success !== false) return {
+      ip: r.ip, cc: r.country_code, country: r.country, city: r.city, tz: r.timezone?.id,
+      now: r.timezone?.current_time,
+      org: [r.connection?.org, r.connection?.isp].filter(Boolean).join(' / '),
+    };
+  } catch (_) {}
+  try {
+    const r = await getJSON(ip ? `https://ipapi.co/${ip}/json/` : 'https://ipapi.co/json/');
+    if (!r.error) return { ip: r.ip, cc: r.country_code, country: r.country_name, city: r.city, tz: r.timezone, org: r.org };
+  } catch (_) {}
+  return null;
+}
+
+async function ownIP(url) {
+  try { return (await getJSON(url, 4000)).ip; } catch (_) { return null; }
+}
+
+async function webrtcIPs() {
+  if (!window.RTCPeerConnection) return null;
+  const ips = new Set();
+  const pc = new RTCPeerConnection({ iceServers: [
+    { urls: 'stun:stun.l.google.com:19302' }, { urls: 'stun:stun.cloudflare.com:3478' }] });
+  const done = new Promise((resolve) => {
+    setTimeout(resolve, 4000);
+    pc.onicegatheringstatechange = () => { if (pc.iceGatheringState === 'complete') resolve(); };
+  });
+  pc.onicecandidate = (e) => {
+    const parts = e.candidate?.candidate?.split(' ');
+    if (!parts || parts.length < 8) return;
+    const addr = parts[4];
+    if (addr.endsWith('.local') || isPrivate(addr)) return;
+    ips.add(addr);
+  };
+  pc.createDataChannel('rc');
+  await pc.setLocalDescription(await pc.createOffer());
+  await done;
+  pc.close();
+  return [...ips];
+}
+
+function isPrivate(ip) {
+  return /^(10\.|127\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.|169\.254\.|0\.)/.test(ip) ||
+    /^(fe80|fc|fd|::1)/i.test(ip);
+}
+
+function offset(tz) {
+  try {
+    return new Intl.DateTimeFormat('en-US', { timeZone: tz, timeZoneName: 'shortOffset' })
+      .formatToParts(new Date()).find((p) => p.type === 'timeZoneName').value;
+  } catch (_) { return null; }
+}
+
+const base = (l) => l.toLowerCase().split('-')[0];
+const where = (g) => `${g.city ? g.city + ', ' : ''}${g.country || g.cc}`;
+
+async function run() {
+  const code = select.value;
+  const C = COUNTRIES[code];
+  store(false, code);
+  history.replaceState(null, '', `?c=${code}`);
+  $('run').disabled = true;
+  $('verdict').className = 'verdict';
+  $('verdict').textContent = 'Kontrol ediliyor…';
+  $('checks').innerHTML = '';
+
+  const results = [];
+  const add = (status, title, detail) => results.push({ status, title, detail });
+
+  const [ip4, ip6, rtc] = await Promise.all([
+    ownIP('https://api.ipify.org?format=json'),
+    ownIP('https://api6.ipify.org?format=json'),
+    webrtcIPs().catch(() => null),
+  ]);
+  const [g4, g6] = await Promise.all([geo(ip4 || ''), ip6 ? geo(ip6) : null]);
+
+  // 1. IP country
+  if (!g4) {
+    add('fail', 'IP konumu', 'IP bilgisi alınamadı. İnternet / VPN bağlantısını kontrol et.');
+  } else if (g4.cc === code) {
+    add('ok', 'IP konumu', `<b>${g4.ip}</b> · ${where(g4)}`);
+  } else {
+    add('fail', 'IP konumu', `<b>${g4.ip}</b> · ${where(g4)}. Beklenen: ${C.name}. VPN kapalı ya da yanlış sunucuda.`);
+  }
+
+  // 2. IP type
+  if (g4?.org) {
+    const org = g4.org.toLowerCase();
+    if (DATACENTER.some((k) => org.includes(k))) {
+      add('warn', 'IP türü', `Datacenter IP gibi görünüyor: <b>${g4.org}</b>. Platformlar bunu VPN olarak işaretleyebilir; residential / mobil IP daha güvenli.`);
+    } else {
+      add('ok', 'IP türü', `Sağlayıcı: <b>${g4.org}</b>`);
+    }
+  }
+
+  // 3. IPv6
+  if (!ip6) {
+    add('ok', 'IPv6 sızıntısı', 'IPv6 adresi yok.');
+  } else if (g6 && g6.cc === code) {
+    add('ok', 'IPv6 sızıntısı', `IPv6 da hedef ülkede: ${where(g6)}`);
+  } else {
+    add('fail', 'IPv6 sızıntısı', `IPv6 VPN dışından çıkıyor: <b>${ip6}</b>${g6 ? ' · ' + where(g6) : ''}`);
+  }
+
+  // 4. WebRTC
+  if (rtc === null) {
+    add('ok', 'WebRTC sızıntısı', 'WebRTC kapalı / desteklenmiyor.');
+  } else {
+    const known = new Set([ip4, ip6].filter(Boolean));
+    const leaked = rtc.filter((ip) => !known.has(ip));
+    if (leaked.length) {
+      const lg = await geo(leaked[0]);
+      add(lg?.cc === code ? 'warn' : 'fail', 'WebRTC sızıntısı',
+        `WebRTC farklı IP gösteriyor: <b>${leaked.join(', ')}</b>${lg ? ' · ' + where(lg) : ''}`);
+    } else {
+      add('ok', 'WebRTC sızıntısı', rtc.length ? 'WebRTC aynı IP\'yi gösteriyor.' : 'WebRTC public IP vermiyor.');
+    }
+  }
+
+  // 5. Time zone
+  const devTz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  if (!C.tz.includes(devTz)) {
+    add('fail', 'Saat dilimi', `Cihaz: <b>${devTz}</b> (${offset(devTz)}). Beklenen: ${C.tz.slice(0, 3).join(', ')}${C.tz.length > 3 ? '…' : ''}`);
+  } else if (g4?.tz && g4.tz !== devTz && offset(g4.tz) !== offset(devTz)) {
+    add('warn', 'Saat dilimi', `Cihaz <b>${devTz}</b> (${offset(devTz)}), IP ise <b>${g4.tz}</b> (${offset(g4.tz)}). VPN sunucusunun şehriyle eşleştir.`);
+  } else {
+    add('ok', 'Saat dilimi', `<b>${devTz}</b> (${offset(devTz)})`);
+  }
+
+  // 6. Clock
+  if (g4?.now) {
+    const drift = Math.abs(Date.now() - Date.parse(g4.now)) / 60000;
+    if (drift > 3) add('warn', 'Saat', `Cihaz saati ~${Math.round(drift)} dk sapmış. Saati elle düzelt.`);
+    else add('ok', 'Saat', 'Cihaz saati doğru.');
+  }
+
+  // 7. Language / region
+  const langs = navigator.languages?.length ? [...navigator.languages] : [navigator.language];
+  const primary = langs[0];
+  const wanted = C.langs.map((l) => l.toLowerCase());
+  const extra = langs.slice(1).filter((l) => base(l) !== base(primary) && !wanted.some((w) => base(w) === base(l)));
+  if (wanted.includes(primary.toLowerCase())) {
+    add('ok', 'Dil / bölge', `<b>${primary}</b>`);
+  } else if (wanted.some((w) => base(w) === base(primary))) {
+    add('warn', 'Dil / bölge', `<b>${primary}</b>, beklenen <b>${C.langs[0]}</b>. Language &amp; Region → Region: ${C.name}.`);
+  } else {
+    add('fail', 'Dil / bölge', `<b>${primary}</b>, beklenen <b>${C.langs[0]}</b>.`);
+  }
+  if (extra.length) {
+    add('fail', 'Ek diller', `Tercih edilen dillerde başka dil var: <b>${extra.join(', ')}</b>. Language &amp; Region → Preferred Languages'tan sil.`);
+  }
+
+  render(results);
+  $('run').disabled = false;
+}
+
+function render(results) {
+  const icon = { ok: '✅', warn: '⚠️', fail: '❌' };
+  $('checks').innerHTML = results.map((r) =>
+    `<li><span class="ic">${icon[r.status]}</span><div><div class="t">${r.title}</div><div class="d">${r.detail}</div></div></li>`
+  ).join('');
+  const fails = results.filter((r) => r.status === 'fail').length;
+  const warns = results.filter((r) => r.status === 'warn').length;
+  const v = $('verdict');
+  if (fails) { v.className = 'verdict fail'; v.textContent = `Hazır değil · ${fails} sorun${warns ? `, ${warns} uyarı` : ''}`; }
+  else if (warns) { v.className = 'verdict warn'; v.textContent = `Neredeyse hazır · ${warns} uyarı`; }
+  else { v.className = 'verdict ok'; v.textContent = `Hazır · ${COUNTRIES[select.value].flag} ${COUNTRIES[select.value].name}`; }
+}
+
+$('run').addEventListener('click', run);
+select.addEventListener('change', run);
+run();
+</script>
+</body>
+</html>
