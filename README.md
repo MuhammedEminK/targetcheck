@@ -13,7 +13,7 @@ Kontroller: IP ülkesi, IP türü (datacenter mi), IPv6 sızıntısı, WebRTC s�
 ## GitHub Pages ile yayınlama
 
 Repo → Settings → Pages → Source: `main` branch, `/ (root)` → Save.
-Sayfa `https://<kullanıcı-adı>.github.io/region-check/` adresinde açılır.
+Sayfa `https://muhammedemink.github.io/targetcheck/` adresinde açılır.
 
 ## Yerelde deneme
 
