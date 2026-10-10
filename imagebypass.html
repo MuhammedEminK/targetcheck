@@ -1,0 +1,352 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Gren Atölyesi</title>
+<style>
+  :root {
+    --bg: #0e0f12;
+    --panel: #16181d;
+    --panel-2: #1d2027;
+    --line: #2a2e37;
+    --text: #e8eaee;
+    --muted: #8b92a1;
+    --accent: #7cf0c6;
+    --accent-ink: #06231a;
+    --warn: #ffcf70;
+  }
+  @media (prefers-color-scheme: light) {
+    :root {
+      --bg: #f4f5f7; --panel: #ffffff; --panel-2: #eef0f3; --line: #dcdfe5;
+      --text: #14161a; --muted: #5d6573; --accent: #0f9d74; --accent-ink: #ffffff; --warn: #8a5a00;
+    }
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body {
+    background: var(--bg); color: var(--text);
+    font: 15px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 1100px; margin: 0 auto; padding: 32px 16px 56px; }
+  header h1 { margin: 0 0 4px; font-size: 26px; letter-spacing: -0.02em; }
+  header p { margin: 0; color: var(--muted); }
+  .grid { display: grid; grid-template-columns: 320px 1fr; gap: 20px; margin-top: 24px; }
+  @media (max-width: 820px) { .grid { grid-template-columns: 1fr; } }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 18px; }
+  .card h2 { margin: 0 0 14px; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
+
+  .drop {
+    border: 1.5px dashed var(--line); border-radius: 12px; padding: 22px 12px; text-align: center;
+    cursor: pointer; transition: border-color .15s, background .15s; background: var(--panel-2);
+  }
+  .drop:hover, .drop.over { border-color: var(--accent); }
+  .drop strong { display: block; margin-bottom: 2px; }
+  .drop span { color: var(--muted); font-size: 13px; }
+  .drop:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  .ctl { margin-top: 18px; }
+  .ctl label { display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 6px; }
+  .ctl label b { font-variant-numeric: tabular-nums; color: var(--accent); font-weight: 600; }
+  input[type=range] { width: 100%; accent-color: var(--accent); }
+  .hint { color: var(--muted); font-size: 12px; margin-top: 2px; }
+
+  .row { display: flex; gap: 8px; margin-top: 18px; }
+  select, .btn {
+    font: inherit; color: var(--text); background: var(--panel-2); border: 1px solid var(--line);
+    border-radius: 10px; padding: 9px 12px;
+  }
+  select { flex: 1; }
+  .btn { cursor: pointer; }
+  .btn:hover { border-color: var(--accent); }
+  .btn.primary { background: var(--accent); color: var(--accent-ink); border-color: transparent; font-weight: 600; width: 100%; margin-top: 18px; padding: 12px; }
+  .btn.primary[disabled] { opacity: .4; cursor: not-allowed; }
+  .check { display: flex; align-items: center; gap: 8px; margin-top: 14px; font-size: 13px; }
+  .check input { accent-color: var(--accent); width: 16px; height: 16px; }
+
+  .views { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  @media (max-width: 560px) { .views { grid-template-columns: 1fr; } }
+  .view { background: var(--panel-2); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+  .view header { display: flex; justify-content: space-between; padding: 8px 12px; font-size: 12px; color: var(--muted); border-bottom: 1px solid var(--line); }
+  .stage { min-height: 260px; display: flex; align-items: center; justify-content: center; padding: 8px;
+    background-image: linear-gradient(45deg, #0002 25%, transparent 25%, transparent 75%, #0002 75%), linear-gradient(45deg, #0002 25%, transparent 25%, transparent 75%, #0002 75%);
+    background-size: 16px 16px; background-position: 0 0, 8px 8px; }
+  .stage canvas, .stage img { max-width: 100%; max-height: 62vh; height: auto; display: block; }
+  .empty { color: var(--muted); font-size: 13px; padding: 40px 12px; text-align: center; }
+  .stats { display: flex; flex-wrap: wrap; gap: 8px 18px; margin-top: 14px; font-size: 13px; color: var(--muted); }
+  .stats b { color: var(--text); font-weight: 600; font-variant-numeric: tabular-nums; }
+  .note { margin-top: 14px; padding: 12px 14px; border-radius: 10px; background: var(--panel-2); border: 1px solid var(--line); font-size: 13px; color: var(--muted); }
+  .note strong { color: var(--warn); }
+  .busy { opacity: .55; transition: opacity .1s; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Gren Atölyesi</h1>
+    <p>Resme hafif gren, yumuşatma ve yeniden sıkıştırma uygula; metadata'yı temizle. Her şey tarayıcında çalışır, dosya hiçbir yere yüklenmez.</p>
+  </header>
+
+  <div class="grid">
+    <aside class="card">
+      <h2>Resim</h2>
+      <div class="drop" id="drop" tabindex="0" role="button" aria-label="Resim seç">
+        <strong>Resmi buraya bırak</strong>
+        <span>ya da tıkla ve seç · PNG, JPG, WebP</span>
+      </div>
+      <input id="file" type="file" accept="image/*" hidden>
+
+      <div class="ctl">
+        <label for="noise">Gren (gürültü) <b id="noiseV">0.03</b></label>
+        <input id="noise" type="range" min="0" max="0.1" step="0.005" value="0.03">
+        <div class="hint">Python sürümündeki varsayılan 0.08 oldukça yüksekti. 0.02–0.04 daha doğal durur.</div>
+      </div>
+
+      <div class="ctl">
+        <label for="blur">Yumuşatma <b id="blurV">0.30</b></label>
+        <input id="blur" type="range" min="0" max="1" step="0.05" value="0.3">
+      </div>
+
+      <div class="ctl">
+        <label for="scale">Yeniden örnekleme <b id="scaleV">%1.0</b></label>
+        <input id="scale" type="range" min="0" max="3" step="0.5" value="1">
+        <div class="hint">Resmi büyütüp eski boyutuna geri küçültür.</div>
+      </div>
+
+      <div class="ctl">
+        <label for="quality">Sıkıştırma kalitesi <b id="qualityV">92</b></label>
+        <input id="quality" type="range" min="60" max="100" step="1" value="92">
+      </div>
+
+      <label class="check"><input type="checkbox" id="mono"> Tek renkli gren (kamera greni gibi)</label>
+
+      <div class="row">
+        <select id="format" aria-label="Çıktı biçimi">
+          <option value="image/jpeg">JPEG</option>
+          <option value="image/webp">WebP</option>
+          <option value="image/png">PNG (kayıpsız)</option>
+        </select>
+        <button class="btn" id="again" title="Aynı ayarlarla gürültüyü yeniden üret">Yeniden uygula</button>
+      </div>
+
+      <button class="btn primary" id="download" disabled>İndir</button>
+    </aside>
+
+    <main class="card">
+      <h2>Önizleme</h2>
+      <div class="views">
+        <section class="view">
+          <header><span>Orijinal</span><span id="origInfo">—</span></header>
+          <div class="stage" id="origStage"><div class="empty">Henüz resim yok</div></div>
+        </section>
+        <section class="view">
+          <header><span>Sonuç</span><span id="outInfo">—</span></header>
+          <div class="stage" id="outStage"><div class="empty">Henüz resim yok</div></div>
+        </section>
+      </div>
+
+      <div class="stats" id="stats" hidden>
+        <span>Boyut: <b id="dim">—</b></span>
+        <span>Orijinal: <b id="sizeA">—</b></span>
+        <span>Sonuç: <b id="sizeB">—</b></span>
+        <span>Metadata: <b>temizlendi</b></span>
+      </div>
+
+      <div class="note">
+        <strong>Bilmen gerekenler:</strong>
+        Tarayıcı resmi yeniden çizip kodladığı için EXIF, XMP ve PNG metin alanları (prompt bilgisi dahil) ve içerik kimlik bilgileri (C2PA) çıktıya taşınmaz.
+        Piksellere gömülü filigranlar ise bu basit filtrelerle silinmeyebilir; bu araç herhangi bir yapay zekâ dedektörünü geçeceğini <em>garanti etmez</em>.
+        Yapay zekâ ile üretilmiş görselleri paylaşırken platformların etiketleme kurallarına uy.
+      </div>
+    </main>
+  </div>
+</div>
+
+<script>
+(() => {
+  const $ = id => document.getElementById(id);
+  const el = {
+    drop: $('drop'), file: $('file'), noise: $('noise'), blur: $('blur'), scale: $('scale'),
+    quality: $('quality'), mono: $('mono'), format: $('format'), again: $('again'), download: $('download'),
+    origStage: $('origStage'), outStage: $('outStage'), origInfo: $('origInfo'), outInfo: $('outInfo'),
+    stats: $('stats'), dim: $('dim'), sizeA: $('sizeA'), sizeB: $('sizeB'),
+  };
+  const labels = {
+    noise: [el.noise, $('noiseV'), v => (+v).toFixed(3).replace(/0$/, '')],
+    blur: [el.blur, $('blurV'), v => (+v).toFixed(2)],
+    scale: [el.scale, $('scaleV'), v => '%' + (+v).toFixed(1)],
+    quality: [el.quality, $('qualityV'), v => v],
+  };
+
+  let srcImg = null, srcName = 'resim', srcSize = 0, outCanvas = null, timer = null, token = 0;
+
+  const fmtBytes = n => n > 1048576 ? (n / 1048576).toFixed(2) + ' MB' : Math.max(1, Math.round(n / 1024)) + ' KB';
+
+  // Box-Muller: standart normal dağılım
+  function gauss() {
+    let u = 0, v = 0;
+    while (u === 0) u = Math.random();
+    while (v === 0) v = Math.random();
+    return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
+  }
+
+  // 3x3 gaussian ile orijinal arasında karışım (ctx.filter her tarayıcıda yok, bu yüzden elle)
+  function softBlur(imgData, w, h, amount) {
+    if (amount <= 0) return;
+    const t = Math.min(1, amount / 0.8);
+    const src = imgData.data, out = new Uint8ClampedArray(src);
+    const k = [1, 2, 1, 2, 4, 2, 1, 2, 1];
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        const i = (y * w + x) * 4;
+        for (let c = 0; c < 3; c++) {
+          let acc = 0, ki = 0;
+          for (let dy = -1; dy <= 1; dy++) {
+            const yy = Math.min(h - 1, Math.max(0, y + dy));
+            for (let dx = -1; dx <= 1; dx++) {
+              const xx = Math.min(w - 1, Math.max(0, x + dx));
+              acc += src[(yy * w + xx) * 4 + c] * k[ki++];
+            }
+          }
+          out[i + c] = src[i + c] * (1 - t) + (acc / 16) * t;
+        }
+      }
+    }
+    imgData.data.set(out);
+  }
+
+  function render() {
+    if (!srcImg) return null;
+    const w = srcImg.naturalWidth, h = srcImg.naturalHeight;
+    const s = 1 + (+el.scale.value) / 100;
+
+    // 1) Yeniden örnekleme: büyüt, sonra eski boyuta küçült
+    let canvas = document.createElement('canvas');
+    canvas.width = w; canvas.height = h;
+    let ctx = canvas.getContext('2d', { willReadFrequently: true });
+    ctx.imageSmoothingQuality = 'high';
+    // JPEG/WebP çıktıda şeffaflık beyaz zemine oturur
+    if (el.format.value !== 'image/png') { ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, w, h); }
+
+    if (s > 1) {
+      const tmp = document.createElement('canvas');
+      tmp.width = Math.round(w * s); tmp.height = Math.round(h * s);
+      const tctx = tmp.getContext('2d');
+      tctx.imageSmoothingQuality = 'high';
+      tctx.drawImage(srcImg, 0, 0, tmp.width, tmp.height);
+      ctx.drawImage(tmp, 0, 0, w, h);
+    } else {
+      ctx.drawImage(srcImg, 0, 0, w, h);
+    }
+
+    // 2) Gren
+    const sigma = (+el.noise.value) * 255;
+    const img = ctx.getImageData(0, 0, w, h);
+    const d = img.data;
+    if (sigma > 0) {
+      const mono = el.mono.checked;
+      for (let i = 0; i < d.length; i += 4) {
+        if (mono) {
+          const n = gauss() * sigma;
+          d[i] += n; d[i + 1] += n; d[i + 2] += n;
+        } else {
+          d[i] += gauss() * sigma; d[i + 1] += gauss() * sigma; d[i + 2] += gauss() * sigma;
+        }
+      }
+    }
+    // 3) Yumuşatma
+    softBlur(img, w, h, +el.blur.value);
+    ctx.putImageData(img, 0, 0);
+    return canvas;
+  }
+
+  function showOut(canvas) {
+    el.outStage.replaceChildren(canvas);
+    outCanvas = canvas;
+    el.download.disabled = false;
+    el.outInfo.textContent = canvas.width + ' × ' + canvas.height;
+    estimateSize();
+  }
+
+  function estimateSize() {
+    if (!outCanvas) return;
+    const my = ++token;
+    const type = el.format.value;
+    outCanvas.toBlob(b => {
+      if (my !== token || !b) return;
+      el.sizeB.textContent = fmtBytes(b.size);
+    }, type, +el.quality.value / 100);
+  }
+
+  function schedule(immediate) {
+    if (!srcImg) return;
+    clearTimeout(timer);
+    el.outStage.classList.add('busy');
+    timer = setTimeout(() => {
+      // tarayıcıya boyama şansı vermek için bir sonraki karede çalıştır
+      requestAnimationFrame(() => {
+        showOut(render());
+        el.outStage.classList.remove('busy');
+      });
+    }, immediate ? 0 : 140);
+  }
+
+  function loadFile(f) {
+    if (!f || !f.type.startsWith('image/')) return;
+    const url = URL.createObjectURL(f);
+    const im = new Image();
+    im.onload = () => {
+      srcImg = im; srcName = f.name.replace(/\.[^.]+$/, '') || 'resim'; srcSize = f.size;
+      const pv = document.createElement('img');
+      pv.src = url; pv.alt = 'Orijinal resim';
+      el.origStage.replaceChildren(pv);
+      el.origInfo.textContent = im.naturalWidth + ' × ' + im.naturalHeight;
+      el.dim.textContent = im.naturalWidth + ' × ' + im.naturalHeight;
+      el.sizeA.textContent = fmtBytes(f.size);
+      el.stats.hidden = false;
+      schedule(true);
+    };
+    im.onerror = () => { alert('Bu dosya resim olarak açılamadı.'); URL.revokeObjectURL(url); };
+    im.src = url;
+  }
+
+  // Olaylar
+  el.drop.addEventListener('click', () => el.file.click());
+  el.drop.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); el.file.click(); } });
+  el.file.addEventListener('change', () => loadFile(el.file.files[0]));
+  ['dragenter', 'dragover'].forEach(t => el.drop.addEventListener(t, e => { e.preventDefault(); el.drop.classList.add('over'); }));
+  ['dragleave', 'drop'].forEach(t => el.drop.addEventListener(t, e => { e.preventDefault(); el.drop.classList.remove('over'); }));
+  el.drop.addEventListener('drop', e => loadFile(e.dataTransfer.files[0]));
+  window.addEventListener('paste', e => {
+    const item = [...(e.clipboardData?.items || [])].find(i => i.type.startsWith('image/'));
+    if (item) loadFile(item.getAsFile());
+  });
+
+  for (const key in labels) {
+    const [input, out, fmt] = labels[key];
+    const upd = () => { out.textContent = fmt(input.value); };
+    input.addEventListener('input', () => { upd(); if (key === 'quality') estimateSize(); else schedule(); });
+    upd();
+  }
+  el.mono.addEventListener('change', () => schedule());
+  el.format.addEventListener('change', () => schedule(true));
+  el.again.addEventListener('click', () => schedule(true));
+
+  el.download.addEventListener('click', () => {
+    if (!outCanvas) return;
+    const type = el.format.value;
+    const ext = { 'image/jpeg': 'jpg', 'image/webp': 'webp', 'image/png': 'png' }[type];
+    outCanvas.toBlob(b => {
+      if (!b) { alert('Bu tarayıcı seçilen biçimi desteklemiyor, JPEG dene.'); return; }
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(b);
+      a.download = srcName + '_gren.' + ext;
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+    }, type, +el.quality.value / 100);
+  });
+})();
+</script>
+</body>
+</html>
