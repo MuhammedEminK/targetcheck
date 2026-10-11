@@ -53,15 +53,6 @@
   .foot { color: var(--muted); font-size: 12.5px; margin-top: 22px; }
 
   main { padding-bottom: calc(96px + env(safe-area-inset-bottom)); }
-  .fab {
-    position: fixed; right: 16px; bottom: calc(16px + env(safe-area-inset-bottom)); z-index: 50;
-    display: inline-flex; align-items: center; gap: 8px; padding: 12px 18px; border-radius: 999px;
-    background: var(--accent); color: var(--accent-text); text-decoration: none; font-weight: 600; font-size: 14.5px;
-    box-shadow: 0 6px 20px rgba(0,0,0,.22); -webkit-tap-highlight-color: transparent;
-  }
-  .fab:active { transform: scale(.97); }
-  .fab:focus-visible { outline: 3px solid var(--muted); outline-offset: 2px; }
-  .fab .ic2 { font-size: 17px; line-height: 1; }
 </style>
 </head>
 <body>
@@ -90,8 +81,6 @@
 
   <p class="foot">IP bilgisi ipwho.is / ipapi.co üzerinden alınır. DNS sızıntısı tarayıcıdan ölçülemez.</p>
 </main>
-
-<a class="fab" href="imagebypass.html" aria-label="Image Bypass sayfasına git"><span class="ic2" aria-hidden="true">🖼️</span>Image Bypass</a>
 
 <script>
 const COUNTRIES = {
@@ -325,5 +314,6 @@ $('run').addEventListener('click', run);
 select.addEventListener('change', run);
 run();
 </script>
+<script src="tools.js" data-current="region" defer></script>
 </body>
 </html>
