@@ -89,7 +89,7 @@
 <div class="wrap">
   <header>
     <h1>Video İndir &amp; Kırp</h1>
-    <p>TikTok veya Instagram linkini yapıştır, istediğin kısmı seç ve sadece o kısmı indir. Kırpma tarayıcında yapılır.</p>
+    <p>TikTok, Instagram veya darkugc linkini yapıştır, istediğin kısmı seç ve sadece o kısmı indir. Kırpma tarayıcında yapılır.</p>
   </header>
 
   <div class="grid">
@@ -97,7 +97,7 @@
       <h2>Link</h2>
       <form id="linkForm" novalidate>
         <input id="url" type="url" inputmode="url" autocomplete="off" autocapitalize="off" spellcheck="false"
-          placeholder="https://www.tiktok.com/@… ya da instagram.com/reel/…" aria-label="Video linki">
+          placeholder="tiktok.com/@…, instagram.com/reel/… ya da darkugc.com/…" aria-label="Video linki">
         <div class="row">
           <button class="btn" type="button" id="paste">Yapıştır</button>
           <button class="btn primary" type="submit" id="fetch">Getir</button>
@@ -187,6 +187,7 @@
       <div class="msg">
         <strong>Bilmen gerekenler:</strong>
         TikTok linkleri herkese açık <code>tikwm.com</code> servisiyle çözülür; Instagram için yukarıdan bir cobalt sunucusu ayarlaman gerekir.
+        darkugc linkleri (<code>darkugc.com/api/library/media/…/video?t=…</code>) doğrudan indirilir; darkugc izin vermezse videonun orijinal TikTok/Instagram gönderisinden denenir. Bu linklerdeki <code>t=</code> anahtarı bir süre sonra geçersiz olabilir.
         Bazı video sunucuları tarayıcının dosyayı okumasına izin vermez: o durumda <em>Tam videoyu indir</em> ile videoyu kaydet, sonra <em>Cihazdan video aç</em> ile yükleyip kırp — seçtiğin süreler korunur.
         Kırpma motoru (ffmpeg, ≈30 MB) ilk kırpmada bir kez indirilir. Gizli hesaplardaki ve süresi dolmuş hikâyeler indirilemez.
         Sadece kendi videolarını ya da sahibinin izin verdiği içerikleri indir; başkasının videosunu yeniden paylaşmak telif ve platform kurallarını ihlal edebilir.
@@ -252,7 +253,19 @@
 
   // ---------- linki çözme ----------
   const platformOf = u => /(^|\.)tiktok\.com$/i.test(u.hostname) ? 'tiktok'
-    : /(^|\.)(instagram\.com|instagr\.am)$/i.test(u.hostname) ? 'instagram' : '';
+    : /(^|\.)(instagram\.com|instagr\.am)$/i.test(u.hostname) ? 'instagram'
+    : /(^|\.)darkugc\.com$/i.test(u.hostname) ? 'darkugc'
+    : /\.(mp4|mov|m4v|webm)$/i.test(u.pathname) ? 'direct' : '';
+
+  // darkugc / doğrudan video linki: link zaten videonun kendisi. darkugc ID'sinden (ig-…, tt-…)
+  // orijinal gönderi de çıkarılır; doğrudan okuma engellenirse oradan denenir.
+  function directLink(u, plat) {
+    const m = u.pathname.match(/\/(ig|tt)-([A-Za-z0-9_-]+)/);
+    const alt = !m ? '' : m[1] === 'ig' ? 'https://www.instagram.com/p/' + m[2] + '/'
+      : /^\d+$/.test(m[2]) ? 'https://www.tiktok.com/@_/video/' + m[2] : '';
+    const base = m ? m[1] + '-' + m[2] : (u.pathname.split('/').pop() || 'video').replace(/\.[^.]+$/, '');
+    return { items: [{ url: u.href, label: 'Video' }], name: (plat === 'darkugc' ? 'darkugc_' : '') + base, alt };
+  }
 
   async function viaTikwm(link, signal) {
     const r = await fetch(TIKWM + '/api/?hd=1&url=' + encodeURIComponent(link), { signal });
@@ -291,12 +304,13 @@
     let u;
     try { u = new URL(raw.trim()); } catch (_) { throw new Error('Geçerli bir link değil.'); }
     const plat = platformOf(u);
+    if (plat === 'darkugc' || plat === 'direct') return directLink(u, plat);
     const tries = [];
     if (plat === 'tiktok') tries.push(['tikwm', viaTikwm]);
     if (el.cobaltUrl.value.trim()) tries.push(['cobalt', viaCobalt]);
     if (!tries.length) {
       if (plat === 'instagram') { el.srv.open = true; throw new Error('Instagram için önce aşağıdaki “Instagram için sunucu ayarı” bölümüne bir cobalt API adresi gir.'); }
-      throw new Error('Şimdilik TikTok ve Instagram linkleri destekleniyor.');
+      throw new Error('Şimdilik TikTok, Instagram, darkugc ve doğrudan video (.mp4) linkleri destekleniyor.');
     }
     const errs = [];
     for (const [name, fn] of tries) {
@@ -352,7 +366,7 @@
         setBar(null, 'Bu gönderide ' + res.items.length + ' video var, birini seç.');
       }
       busy = '';
-      await loadRemote(res.items[0].url, res.items.length > 1 ? res.name + '_1' : res.name);
+      await loadRemote(res.items[0].url, res.items.length > 1 ? res.name + '_1' : res.name, res.alt);
     } catch (err) {
       if (err.name !== 'AbortError') { showErr('Hata: ' + esc(err.message)); el.progress.classList.remove('on'); }
     } finally {
@@ -361,13 +375,25 @@
     }
   }
 
-  async function loadRemote(url, name) {
+  async function loadRemote(url, name, alt) {
     busy = 'fetch'; aborter = aborter || new AbortController();
     el.cancel.hidden = false; el.fetch.disabled = true;
     el.full.href = url; el.full.hidden = false; el.full.removeAttribute('download');
     try {
       setBar(null, 'Video indiriliyor…');
-      const blob = await fetchBytes(url, aborter.signal);
+      let blob;
+      try { blob = await fetchBytes(url, aborter.signal); }
+      catch (err) {
+        if (!alt || err.name === 'AbortError') throw err;
+        addLog('Doğrudan okunamadı (' + err.message + '), orijinal gönderiden deneniyor: ' + alt);
+        try {
+          const res = await resolveLink(alt, aborter.signal);
+          blob = await fetchBytes(res.items[0].url, aborter.signal);
+        } catch (e2) {
+          if (e2.name === 'AbortError') throw e2;
+          addLog(e2.message); throw err;
+        }
+      }
       setSource(blob, name);
       setBar(1, 'Video hazır · kırpmak istediğin kısmı seç');
     } catch (err) {

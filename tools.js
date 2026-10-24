@@ -12,7 +12,7 @@
     { id: 'region', icon: '🌍', name: 'Region Check', desc: 'VPN / bölge tutarlılığı kontrolü', href: './' },
     { id: 'image',  icon: '🖼️', name: 'Image Bypass', desc: 'Resme gren, yumuşatma, metadata temizliği', href: 'imagebypass.html' },
     { id: 'video',  icon: '🎬', name: 'Video Bypass', desc: 'Videoya gren, yumuşatma, metadata temizliği', href: 'videobypass.html' },
-    { id: 'download', icon: '⬇️', name: 'Video İndir', desc: 'TikTok / Instagram linkinden kırpıp indir', href: 'videoindir.html' },
+    { id: 'download', icon: '⬇️', name: 'Video İndir', desc: 'TikTok / Instagram / darkugc linkinden kırpıp indir', href: 'videoindir.html' },
   ];
 
   const current = (document.currentScript && document.currentScript.dataset.current) || '';
