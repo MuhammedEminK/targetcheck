@@ -114,13 +114,13 @@
         <summary>Instagram için sunucu ayarı</summary>
         <div class="ctl">
           <label for="cobaltUrl">cobalt API adresi</label>
-          <input id="cobaltUrl" type="text" inputmode="url" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="https://cobalt.ornek.com">
+          <input id="cobaltUrl" type="text" inputmode="url" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="https://cobalt-4qdb7bjs7a-ew.a.run.app">
         </div>
         <div class="ctl">
           <label for="cobaltKey">API anahtarı (gerekiyorsa)</label>
           <input id="cobaltKey" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="boş bırakılabilir">
         </div>
-        <div class="hint">Instagram linkleri tarayıcıdan doğrudan çözülemediği için bir <b>cobalt</b> sunucusu gerekir (kendi kurduğun ya da erişimin olan bir sunucu). TikTok için gerekmez; ayarlıysa yedek olarak kullanılır. Bu ayar sadece bu cihazda saklanır.</div>
+        <div class="hint">Instagram linkleri tarayıcıdan doğrudan çözülemediği için bir <b>cobalt</b> sunucusu kullanılır; varsayılan sunucu hazır gelir, değiştirmen gerekmez. TikTok için gerekmez, yedek olarak kullanılır. Başka bir sunucu girersen sadece bu cihazda saklanır; kutuyu boşaltırsan varsayılana döner.</div>
       </details>
 
       <h2 class="sep">Kırpma</h2>
@@ -186,7 +186,7 @@
 
       <div class="msg">
         <strong>Bilmen gerekenler:</strong>
-        TikTok linkleri herkese açık <code>tikwm.com</code> servisiyle çözülür; Instagram için yukarıdan bir cobalt sunucusu ayarlaman gerekir.
+        TikTok linkleri herkese açık <code>tikwm.com</code> servisiyle çözülür; Instagram linkleri hazır gelen cobalt sunucusuyla çözülür.
         darkugc linkleri (<code>darkugc.com/api/library/media/…/video?t=…</code>) doğrudan indirilir; darkugc izin vermezse videonun orijinal TikTok/Instagram gönderisinden denenir. Bu linklerdeki <code>t=</code> anahtarı bir süre sonra geçersiz olabilir.
         Bazı video sunucuları tarayıcının dosyayı okumasına izin vermez: o durumda <em>Tam videoyu indir</em> ile videoyu kaydet, sonra <em>Cihazdan video aç</em> ile yükleyip kırp — seçtiğin süreler korunur.
         Kırpma motoru (ffmpeg, ≈30 MB) ilk kırpmada bir kez indirilir. Gizli hesaplardaki ve süresi dolmuş hikâyeler indirilemez.
@@ -204,6 +204,7 @@
   const CORE = 'https://unpkg.com/@ffmpeg/core@0.12.6/dist/esm'; // worker modül tipinde olduğu için ESM çekirdek şart
   const TIKWM = 'https://www.tikwm.com';
   const STORE = 'videoindir.cobalt';
+  const DEFAULT_COBALT = 'https://cobalt-4qdb7bjs7a-ew.a.run.app'; // kutu boş bırakılırsa bu sunucu kullanılır
 
   const el = {
     form: $('linkForm'), url: $('url'), paste: $('paste'), fetch: $('fetch'), picks: $('picks'),
@@ -243,8 +244,8 @@
   // ---------- cobalt ayarı (sadece bu tarayıcıda) ----------
   try {
     const saved = JSON.parse(localStorage.getItem(STORE) || '{}');
-    el.cobaltUrl.value = saved.url || ''; el.cobaltKey.value = saved.key || '';
-  } catch (_) {}
+    el.cobaltUrl.value = saved.url || DEFAULT_COBALT; el.cobaltKey.value = saved.key || '';
+  } catch (_) { el.cobaltUrl.value = DEFAULT_COBALT; }
   const saveCobalt = () => {
     try { localStorage.setItem(STORE, JSON.stringify({ url: el.cobaltUrl.value.trim(), key: el.cobaltKey.value.trim() })); } catch (_) {}
   };
