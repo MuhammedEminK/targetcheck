@@ -3,7 +3,7 @@
  *
  * Kullanım: her sayfanın </body> öncesine şunu ekle:
  *   <script src="tools.js" data-current="image" defer></script>
- * data-current değeri: region | image | video  (açık olan sayfayı vurgular)
+ * data-current değeri: region | image | video | download  (açık olan sayfayı vurgular)
  *
  * Yeni tool eklemek için aşağıdaki TOOLS listesine bir satır eklemen yeterli.
  */
@@ -12,6 +12,7 @@
     { id: 'region', icon: '🌍', name: 'Region Check', desc: 'VPN / bölge tutarlılığı kontrolü', href: './' },
     { id: 'image',  icon: '🖼️', name: 'Image Bypass', desc: 'Resme gren, yumuşatma, metadata temizliği', href: 'imagebypass.html' },
     { id: 'video',  icon: '🎬', name: 'Video Bypass', desc: 'Videoya gren, yumuşatma, metadata temizliği', href: 'videobypass.html' },
+    { id: 'download', icon: '⬇️', name: 'Video İndir', desc: 'TikTok / Instagram linkinden kırpıp indir', href: 'videoindir.html' },
   ];
 
   const current = (document.currentScript && document.currentScript.dataset.current) || '';
